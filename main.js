@@ -4,7 +4,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 // =============================================================================
 // 0. CONSTANTES Y UTILIDADES
 // =============================================================================
-const API_BASE = 'api';   // /api/... lo redirige .htaccess a index.php
+const API_BASE = 'index.php/api';   // funciona con o sin .htaccess
 const N0 = 0.05;                    // altura inicial (u)
 const UMBRAL_DANO = 40;             // estrés global (%) desde el cual la planta PIERDE salud
 const UMBRAL_CRITICO = 75;          // estrés global (%) considerado crítico
@@ -806,7 +806,8 @@ async function cargarReportes() {
         const m = r.madurez;
         linea(m && m.dias ? `⏱️ Tiempo promedio a madurez: ${Number(m.dias).toFixed(0)} días (${m.n} simulaciones lo alcanzaron)` : '⏱️ Tiempo promedio a madurez: sin datos');
     } catch (e) {
-        box.textContent = 'No se pudieron cargar los reportes (¿Apache/MySQL encendidos?).';
+        console.error(e);
+        box.textContent = `No se pudieron cargar los reportes: ${e.message}`;
     }
 }
 
@@ -815,8 +816,10 @@ async function cargarReportes() {
 // =============================================================================
 async function api(ruta, opciones = {}) {
     const r = await fetch(`${API_BASE}${ruta}`, { headers: { 'Content-Type': 'application/json' }, ...opciones });
-    if (!r.ok) throw new Error(`HTTP ${r.status}`);
-    return r.json();
+    if (!r.ok) throw new Error(`error HTTP ${r.status} en ${API_BASE}${ruta}`);
+    const texto = await r.text();
+    try { return JSON.parse(texto); }
+    catch { throw new Error(`${API_BASE}${ruta} no devolvió JSON (¿falta FlightPHP o el .htaccess?)`); }
 }
 
 let toastTimer = null;
@@ -883,7 +886,8 @@ async function guardarSimulacion() {
         const r = await api('/simulaciones', { method: 'POST', body: JSON.stringify(payload) });
         toast(`✅ Simulación guardada en MySQL (id ${r.id})`);
     } catch (e) {
-        toast('❌ No se pudo guardar. Revisa que Apache y MySQL estén encendidos.');
+        console.error(e);
+        toast(`❌ No se pudo guardar: ${e.message}`);
     }
 }
 
@@ -1159,7 +1163,11 @@ async function abrirHistorial() {
             td.appendChild(b); tr.appendChild(td); tb.appendChild(tr);
         });
     } catch (e) {
-        tb.innerHTML = '<tr><td colspan="8">No se pudo cargar el historial (¿Apache/MySQL encendidos?).</td></tr>';
+        console.error(e);
+        tb.innerHTML = '';
+        const tr = document.createElement('tr'), td = document.createElement('td');
+        td.colSpan = 8; td.textContent = `No se pudo cargar el historial: ${e.message}`;
+        tr.appendChild(td); tb.appendChild(tr);
     }
 }
 
