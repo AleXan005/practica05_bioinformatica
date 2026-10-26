@@ -10,6 +10,15 @@ if (file_exists(__DIR__ . '/vendor/autoload.php')) {
 
 require_once __DIR__ . '/config/db.php';
 
+// Funciona con o sin .htaccess: si la URL trae /index.php/api/..., se quita "/index.php" para que Flight reconozca la ruta
+$_SERVER['REQUEST_URI'] = preg_replace('#/index\.php(?=/|\?|$)#', '', $_SERVER['REQUEST_URI'], 1);
+
+// Al entrar a la carpeta del proyecto se muestra el simulador
+Flight::route('GET /', function() {
+    header('Content-Type: text/html; charset=utf-8');
+    readfile(__DIR__ . '/index.html');
+});
+
 // Rutas no encontradas -> JSON con código 404
 Flight::map('notFound', function() {
     Flight::json(['error' => 'Ruta no encontrada'], 404);
